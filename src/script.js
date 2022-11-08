@@ -2,6 +2,7 @@ import "./style.css";
 import * as THREE from "three";
 import * as dat from "lil-gui";
 import gsap from "gsap";
+import { AdditiveBlending } from "three";
 
 /**
  * Debug
@@ -86,6 +87,8 @@ const textureLoader = new THREE.TextureLoader(loadingManager);
 const gradientTexture = textureLoader.load("textures/gradients/3.jpg");
 gradientTexture.magFilter = THREE.NearestFilter;
 
+const particleTexture = textureLoader.load("/textures/particles/1.png");
+
 // Material
 const material = new THREE.MeshToonMaterial({
   color: parameters.materialColor,
@@ -132,9 +135,16 @@ particlesGeometry.setAttribute(
 
 // Material
 const particlesMaterial = new THREE.PointsMaterial({
-  color: parameters.materialColor,
+  color: new THREE.Color("#ff88cc"),
   sizeAttenuation: true,
-  size: 0.03,
+  size: 0.4,
+  sizeAttenuation: true,
+  alphaMap: particleTexture,
+  alphaTest: 0.01,
+  // depthTest: false,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
 });
 
 // Points
