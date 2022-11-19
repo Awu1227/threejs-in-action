@@ -1,30 +1,97 @@
 import "./style.css";
 import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import * as dat from "lil-gui";
-import gsap from "gsap";
-import { AdditiveBlending } from "three";
-
-/**
- * Debug
- */
-// const gui = new dat.GUI();
-
-const parameters = {
-  materialColor: "#ffeded",
-};
-
-// gui.addColor(parameters, "materialColor").onChange(() => {
-//   material.color.set(parameters.materialColor);
-// });
 
 /**
  * Base
  */
+// Debug
+const gui = new dat.GUI();
+
 // Canvas
 const canvas = document.querySelector("canvas.webgl");
 
 // Scene
 const scene = new THREE.Scene();
+
+/**
+ * Models
+ */
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath("/draco/");
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(dracoLoader);
+let mixers = [null, null, null];
+gltfLoader.load("/models/Fox/glTF/Fox.gltf", (gltf) => {
+  // const children = [...gltf.scene.children];
+  // for (const child of children) {
+  //   scene.add(child);
+  // }
+  mixers[0] = new THREE.AnimationMixer(gltf.scene);
+  const action = mixers[0].clipAction(gltf.animations[0]);
+  action.play();
+  gltf.scene.scale.set(0.025, 0.025, 0.025);
+  scene.add(gltf.scene);
+  console.log("success");
+});
+
+gltfLoader.load("/models/Fox/glTF/Fox.gltf", (gltf) => {
+  mixers[1] = new THREE.AnimationMixer(gltf.scene);
+  const action = mixers[1].clipAction(gltf.animations[1]);
+  action.play();
+
+  gltf.scene.position.set(-2, 0, 0);
+  gltf.scene.scale.set(0.025, 0.025, 0.025);
+  scene.add(gltf.scene);
+  console.log("success");
+});
+
+gltfLoader.load("/models/Fox/glTF/Fox.gltf", (gltf) => {
+  mixers[2] = new THREE.AnimationMixer(gltf.scene);
+  const action = mixers[2].clipAction(gltf.animations[2]);
+  action.play();
+
+  gltf.scene.position.set(2, 0, 0);
+  gltf.scene.scale.set(0.025, 0.025, 0.025);
+  scene.add(gltf.scene);
+  console.log("success");
+});
+
+/**
+ * Floor
+ */
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.MeshStandardMaterial({
+    color: "#444444",
+    metalness: 0,
+    roughness: 0.5,
+  })
+);
+floor.receiveShadow = true;
+floor.rotation.x = -Math.PI * 0.5;
+scene.add(floor);
+
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.set(1024, 1024);
+directionalLight.shadow.camera.far = 15;
+directionalLight.shadow.camera.left = -7;
+directionalLight.shadow.camera.top = 7;
+directionalLight.shadow.camera.right = 7;
+directionalLight.shadow.camera.bottom = -7;
+directionalLight.position.set(5, 5, 5);
+scene.add(directionalLight);
 
 /**
  * Sizes
@@ -33,130 +100,6 @@ const sizes = {
   width: window.innerWidth,
   height: window.innerHeight,
 };
-const isPortrait = sizes.width < sizes.height;
-
-let objectsDistance = 5;
-
-/**
- * Camera
- */
-// Base camera
-
-const cameraGroup = new THREE.Group();
-scene.add(cameraGroup);
-
-const camera = new THREE.PerspectiveCamera(
-  75,
-  sizes.width / sizes.height,
-  0.1,
-  100
-);
-camera.position.set(0, 0, 4);
-// 移动端适配
-if (isPortrait) {
-  camera.position.setZ(8);
-  objectsDistance = 11;
-}
-cameraGroup.add(camera);
-
-const loadingManager = new THREE.LoadingManager();
-loadingManager.onStart = () => {
-  console.log("onStart");
-};
-loadingManager.onProgress = () => {
-  console.log("onProgress");
-};
-loadingManager.onLoad = () => {
-  console.log("onLoad");
-  const loadingEle = document.querySelector("#loading");
-  loadingEle.style.opacity = "0";
-  setTimeout(() => {
-    loadingEle.style.display = "none";
-  }, 300);
-};
-loadingManager.onError = () => {
-  console.log("onError");
-};
-
-/**
- * Objects
- */
-
-// Texture
-const textureLoader = new THREE.TextureLoader(loadingManager);
-const gradientTexture = textureLoader.load("textures/gradients/3.jpg");
-gradientTexture.magFilter = THREE.NearestFilter;
-
-const particleTexture = textureLoader.load("/textures/particles/1.png");
-
-// Material
-const material = new THREE.MeshToonMaterial({
-  color: parameters.materialColor,
-  gradientMap: gradientTexture,
-});
-
-// Meshes
-const mesh1 = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 60), material);
-const mesh2 = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 23), material);
-const mesh3 = new THREE.Mesh(
-  new THREE.TorusKnotGeometry(0.8, 0.35, 100, 16),
-  material
-);
-scene.add(mesh1, mesh2, mesh3);
-
-const sectionMeshes = [mesh1, mesh2, mesh3];
-sectionMeshes.forEach((item, index) => {
-  if (isPortrait) {
-    item.position.setY(-objectsDistance * index);
-  } else {
-    item.position.setX(index % 2 === 0 ? -2 : 2);
-    item.position.setY(-objectsDistance * index);
-  }
-});
-/**
- * Particles
- */
-
-const particlesCount = 200;
-const positions = new Float32Array(particlesCount * 3);
-
-for (let i = 0; i < particlesCount; i++) {
-  positions[i * 3 + 0] = (Math.random() - 0.5) * 10;
-  positions[i * 3 + 1] =
-    objectsDistance * 0.5 -
-    Math.random() * objectsDistance * sectionMeshes.length;
-  positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
-}
-const particlesGeometry = new THREE.BufferGeometry();
-particlesGeometry.setAttribute(
-  "position",
-  new THREE.BufferAttribute(positions, 3)
-);
-
-// Material
-const particlesMaterial = new THREE.PointsMaterial({
-  color: new THREE.Color("#ff88cc"),
-  sizeAttenuation: true,
-  size: 0.4,
-  sizeAttenuation: true,
-  alphaMap: particleTexture,
-  alphaTest: 0.01,
-  // depthTest: false,
-  transparent: true,
-  depthWrite: false,
-  blending: THREE.AdditiveBlending,
-});
-
-// Points
-const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-scene.add(particles);
-
-/**
- * Lights
- */
-const directionalLight = new THREE.DirectionalLight("#ffffff", 1);
-directionalLight.position.set(1, 1, 0);
-scene.add(directionalLight);
 
 window.addEventListener("resize", () => {
   // Update sizes
@@ -173,48 +116,33 @@ window.addEventListener("resize", () => {
 });
 
 /**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100
+);
+camera.position.set(2, 2, 6);
+scene.add(camera);
+
+// Controls
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0.75, 0);
+controls.enableDamping = true;
+
+/**
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
-  alpha: true,
 });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-/**
- * Scroll
- */
-let scrollY = window.scrollY;
-let currentSection = 0;
-
-window.addEventListener("scroll", () => {
-  scrollY = window.scrollY;
-
-  const newSection = Math.round(scrollY / sizes.height);
-
-  if (newSection !== currentSection) {
-    currentSection = newSection;
-    gsap.to(sectionMeshes[currentSection].rotation, {
-      duration: 1.5,
-      ease: "power2.inOut",
-      x: "+=6",
-      y: "+=3",
-    });
-  }
-});
-
-/**
- * Cursor
- */
-const cursor = {};
-cursor.x = 0;
-cursor.y = 0;
-
-window.addEventListener("mousemove", (event) => {
-  cursor.x = event.clientX / sizes.width - 0.5;
-  cursor.y = event.clientY / sizes.height - 0.5;
-});
 
 /**
  * Animate
@@ -227,21 +155,16 @@ const tick = () => {
   const deltaTime = elapsedTime - previousTime;
   previousTime = elapsedTime;
 
-  // Animated camera
-  camera.position.y = (-scrollY / sizes.height) * objectsDistance;
-
-  const parallaxX = cursor.x * 0.5;
-  const parallaxY = -cursor.y * 0.5;
-  cameraGroup.position.x +=
-    (parallaxX - cameraGroup.position.x) * 5 * deltaTime;
-  cameraGroup.position.y +=
-    (parallaxY - cameraGroup.position.y) * 5 * deltaTime;
-
-  // Animate meshed
-  for (const mesh of sectionMeshes) {
-    mesh.rotation.x += deltaTime * 0.1;
-    mesh.rotation.y += deltaTime * 0.12;
+  // Update mixer
+  for (const mixer of mixers) {
+    if (mixer) {
+      mixer.update(deltaTime);
+    }
   }
+
+  // Update controls
+  controls.update();
+
   // Render
   renderer.render(scene, camera);
 
